@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TMoon — Defense Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #04080f;
+      --cyan:      #00d4ff;
+      --cyan-glow: rgba(0,212,255,0.25);
+      --indigo:    #6366f1;
+      --amber:     #f59e0b;
+      --red:       #ef4444;
+      --green:     #10b981;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --card:      rgba(255,255,255,0.03);
+      --border:    rgba(255,255,255,0.07);
+    }
+
+    html, body {
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* ─── CANVAS ─────────────────────────────────────────────── */
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ─── PROGRESS ───────────────────────────────────────────── */
+    #progress {
+      position: fixed; top: 0; left: 0; height: 2px; z-index: 50;
+      background: linear-gradient(90deg, var(--cyan), var(--indigo));
+      transition: width .5s ease;
+    }
+
+    /* ─── SLIDE DOT NAV ──────────────────────────────────────── */
+    #dot-nav {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      z-index: 50; display: flex; gap: 10px; align-items: center;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted); cursor: pointer;
+      transition: all .3s ease;
+    }
+    .dot.active {
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+      width: 22px; border-radius: 3px;
+    }
+
+    /* ─── SLIDE BASE ─────────────────────────────────────────── */
+    .slide {
+      position: absolute; inset: 0; z-index: 1;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 5vw 7vw;
+      opacity: 0;
+      transform: translateY(24px);
+      pointer-events: none;
+      transition: opacity .55s ease, transform .55s ease;
+    }
+    .slide.active {
+      opacity: 1; transform: translateY(0);
+      pointer-events: all;
+    }
+
+    /* ─── TYPOGRAPHY ─────────────────────────────────────────── */
+    .eyebrow {
+      font-size: 10px; font-weight: 600; letter-spacing: 4px;
+      text-transform: uppercase; color: var(--cyan);
+      margin-bottom: 20px;
+    }
+    .h1 {
+      font-size: clamp(38px, 5.5vw, 80px);
+      font-weight: 900; line-height: 1.06;
+      letter-spacing: -2px; text-align: center;
+    }
+    .sub {
+      font-size: clamp(16px, 1.8vw, 24px);
+      color: var(--muted); text-align: center;
+      margin-top: 14px; line-height: 1.6; font-weight: 400;
+    }
+    .cx  { color: var(--cyan);  }
+    .cr  { color: var(--red);   }
+    .ca  { color: var(--amber); }
+    .cg  { color: var(--green); }
+
+    /* ─── CARDS / GRID ───────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      backdrop-filter: blur(12px);
+    }
+    .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
+
+    /* ─── SLIDE 1 — COVER ────────────────────────────────────── */
+    #s1 { text-align: center; }
+    .logo-mark {
+      font-size: clamp(13px, 1.4vw, 17px);
+      font-weight: 700; letter-spacing: 10px; color: var(--cyan);
+      margin-bottom: 44px;
+      text-shadow: 0 0 24px var(--cyan-glow);
+    }
+    .cover-h {
+      font-size: clamp(44px, 6.5vw, 96px);
+      font-weight: 900; line-height: 1.04; letter-spacing: -3px;
+      max-width: 960px;
+    }
+    .cover-tagline {
+      font-size: clamp(20px, 2.4vw, 34px);
+      font-weight: 300; color: var(--cyan); margin-top: 22px;
+    }
+    .cover-meta {
+      position: absolute; bottom: 72px;
+      font-size: 11px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--muted);
+    }
+
+    /* ─── SLIDE 2 — PROBLEM ──────────────────────────────────── */
+    .big-stats { display: flex; gap: 80px; margin: 40px 0 36px; align-items: flex-end; }
+    .bstat { text-align: center; }
+    .bstat-val {
+      font-size: clamp(60px, 10vw, 130px);
+      font-weight: 900; line-height: 1;
+      letter-spacing: -4px;
+    }
+    .bstat-lbl {
+      font-size: 13px; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--muted); margin-top: 8px;
+    }
+    .vdivider { width: 1px; height: 90px; background: var(--border); margin-bottom: 10px; }
+    .pill-row { display: flex; gap: 16px; }
+    .pill {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 22px; text-align: center;
+    }
+    .pill-val { font-size: 20px; font-weight: 700; color: var(--amber); }
+    .pill-lbl { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: .3px; }
+
+    /* ─── SLIDE 2B — MINDBASE ───────────────────────────────── */
+    .tl-wrap { margin: 36px 0 22px; width: 100%; max-width: 840px; }
+    .tl-bar  { display: flex; gap: 4px; height: 76px; }
+    .tl-seg  {
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center; gap: 5px;
+      border-radius: 12px;
+    }
+    .tl-meeting { flex: 45; background: rgba(100,116,139,.1); border: 1px solid rgba(100,116,139,.18); }
+    .tl-coffee  { flex: 5;  background: rgba(100,116,139,.07); border: 1px solid rgba(100,116,139,.12); }
+    .tl-prep    {
+      flex: 10;
+      background: rgba(245,158,11,.13); border: 1px solid rgba(245,158,11,.45);
+      box-shadow: 0 0 22px rgba(245,158,11,.12);
+    }
+    .tl-lbl { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+    .tl-seg.tl-prep .tl-lbl { color: var(--amber); }
+    .tl-val { font-size: 20px; font-weight: 700; }
+    .tl-seg.tl-prep .tl-val { color: var(--amber); }
+    .tl-hint {
+      text-align: right; font-size: 12px; color: var(--amber);
+      margin-top: 10px; font-family: 'JetBrains Mono', monospace; letter-spacing: .5px;
+    }
+    .checks-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 18px; }
+    .check-pill {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 16px; font-size: 13px; color: var(--muted);
+    }
+
+    /* ─── SLIDE 3 — CHAIN ────────────────────────────────────── */
+    #s3::after {
+      content: '';
+      position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(ellipse at 65% 50%, rgba(239,68,68,.06) 0%, transparent 65%);
+    }
+    .chain-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0; margin-top: 28px;
+    }
+    .cn {
+      display: flex; align-items: center; gap: 14px;
+      padding: 11px 26px; border-radius: 12px; min-width: 340px;
+      opacity: 0; transform: translateX(-18px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+    .cn.show { opacity: 1; transform: translateX(0); }
+    .cn-red   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.3); }
+    .cn-amber { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); }
+    .cn-green { background: rgba(16,185,129,.07); border: 1px solid rgba(16,185,129,.25); }
+    .cn-blue  { background: rgba(0,212,255,.06);  border: 1px solid rgba(0,212,255,.2); }
+    .cn-icon { font-size: 18px; }
+    .cn-text { font-size: 14px; font-weight: 600; }
+    .cn-badge {
+      margin-left: auto; font-size: 10px; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .chain-arrow {
+      font-size: 12px; color: var(--muted); margin: 1px 0;
+      opacity: 0; transition: opacity .3s ease .15s;
+      font-family: 'JetBrains Mono', monospace; letter-spacing: 1px;
+    }
+    .chain-arrow.show { opacity: 1; }
+
+    /* ─── SLIDE 4 — SOLUTION ─────────────────────────────────── */
+    #s4::after {
+      content: '';
+      position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(ellipse at 30% 50%, rgba(0,212,255,.07) 0%, transparent 60%);
+    }
+    #s4 { align-items: stretch; justify-content: center; }
+    .s4-layout {
+      display: grid; grid-template-columns: 1fr 1.5fr;
+      gap: 52px; align-items: center;
+      width: 100%; max-width: 1120px;
+    }
+    .s4-left { display: flex; flex-direction: column; align-items: flex-start; }
+    .counter-wrap { display: flex; align-items: baseline; gap: 6px; margin: 10px 0 16px; }
+    .counter-num {
+      font-size: clamp(72px, 11vw, 140px);
+      font-weight: 900; color: var(--cyan); line-height: 1;
+      letter-spacing: -5px;
+      text-shadow: 0 0 60px rgba(0,212,255,.45);
+      transition: transform .8s cubic-bezier(.34,1.56,.64,1), opacity .5s ease;
+    }
+    .counter-unit { font-size: clamp(20px, 3vw, 40px); font-weight: 300; color: var(--muted); }
+    .s4-desc { font-size: 15px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+    .s4-sources { display: flex; flex-wrap: wrap; gap: 8px; }
+    .s4-sources span {
+      font-size: 11px; padding: 5px 12px; border-radius: 6px;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: .5px;
+    }
+
+    /* ─── DEMO PANEL ─────────────────────────────────────────── */
+    .demo-panel {
+      background: rgba(0,212,255,.025);
+      border: 1px solid rgba(0,212,255,.2);
+      border-radius: 18px; overflow: hidden;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .demo-header { padding: 14px 18px 12px; border-bottom: 1px solid var(--border); }
+    .demo-brand { font-size: 10px; letter-spacing: 3px; color: var(--cyan); margin-bottom: 10px; }
+    .demo-input-row { display: flex; gap: 10px; align-items: center; }
+    .demo-input {
+      flex: 1; background: rgba(255,255,255,.05);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 7px 13px; font-size: 13px; color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .demo-btn {
+      background: var(--cyan); color: #04080f;
+      border: none; border-radius: 8px; padding: 7px 16px;
+      font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: 1px;
+      font-family: 'JetBrains Mono', monospace; transition: opacity .2s, transform .1s;
+      white-space: nowrap;
+    }
+    .demo-btn:hover:not(:disabled) { opacity: .85; transform: scale(1.03); }
+    .demo-btn:disabled { opacity: .35; cursor: default; }
+    .demo-prog-wrap {
+      padding: 10px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .demo-prog-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .demo-prog-fill {
+      height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--cyan), var(--indigo));
+      transition: width .08s linear; border-radius: 2px;
+    }
+    .demo-timer { font-size: 12px; color: var(--cyan); min-width: 38px; text-align: right; }
+    .demo-results { padding: 2px 0; }
+    .demo-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 18px; font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      opacity: 0; transform: translateY(5px);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .demo-row.show { opacity: 1; transform: translateY(0); }
+    .demo-row:last-child { border: none; }
+    .d-icon { min-width: 18px; font-style: normal; }
+    .d-lbl  { flex: 1; color: var(--muted); }
+    .d-val  { font-weight: 700; }
+    .d-ok   { color: var(--green); }
+    .d-warn { color: var(--amber); }
+    .d-bad  { color: var(--red); }
+
+    /* ─── SLIDE 5 — WHY NOW ──────────────────────────────────── */
+    .wnow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; max-width: 960px; width: 100%; margin-top: 40px; }
+    .wnow-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 22px; padding: 36px 26px 30px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .wnow-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .wnow-card.c1::before { background: var(--red); }
+    .wnow-card.c2::before { background: var(--amber); }
+    .wnow-card.c3::before { background: var(--cyan); }
+    .wnow-icon { font-size: 38px; margin-bottom: 14px; }
+    .wnow-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .wnow-stat { font-size: 32px; font-weight: 900; margin-bottom: 8px; line-height: 1; }
+    .wnow-card.c1 .wnow-stat { color: var(--red); }
+    .wnow-card.c2 .wnow-stat { color: var(--amber); }
+    .wnow-card.c3 .wnow-stat { color: var(--cyan); }
+    .wnow-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+    /* ─── SLIDE 6 — PATH ─────────────────────────────────────── */
+    .path-row { display: flex; align-items: center; max-width: 1000px; width: 100%; margin-top: 44px; }
+    .pstep { flex: 1; text-align: center; padding: 0 10px; }
+    .pnode {
+      width: 54px; height: 54px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin: 0 auto 14px;
+    }
+    .pstep:nth-child(1) .pnode { background: rgba(0,212,255,.12); border: 2px solid var(--cyan); }
+    .pstep:nth-child(3) .pnode { background: rgba(99,102,241,.12); border: 2px solid var(--indigo); }
+    .pstep:nth-child(5) .pnode { background: rgba(245,158,11,.12); border: 2px solid var(--amber); }
+    .pstep:nth-child(7) .pnode { background: rgba(16,185,129,.12); border: 2px solid var(--green); }
+    .ptime { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+    .pstep:nth-child(1) .ptime { color: var(--cyan); }
+    .pstep:nth-child(3) .ptime { color: var(--indigo); }
+    .pstep:nth-child(5) .ptime { color: var(--amber); }
+    .pstep:nth-child(7) .ptime { color: var(--green); }
+    .ptitle { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+    .psub   { font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .parrow { color: var(--muted); font-size: 22px; flex-shrink: 0; }
+
+    /* ─── SLIDE 7 — ASK ──────────────────────────────────────── */
+    .ask-list { max-width: 760px; width: 100%; margin-top: 38px; display: flex; flex-direction: column; gap: 14px; }
+    .ask-item {
+      display: flex; align-items: center; gap: 24px;
+      padding: 18px 28px; border-radius: 14px;
+      background: var(--card); border: 1px solid var(--border);
+    }
+    .ask-n { font-size: 38px; font-weight: 900; color: var(--cyan); line-height: 1; min-width: 42px; }
+    .ask-t { font-size: 18px; font-weight: 500; }
+    .ask-close {
+      margin-top: 32px; text-align: center;
+      font-size: clamp(17px, 2vw, 26px);
+      font-weight: 300; color: var(--cyan);
+      font-style: italic; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div id="progress"></div>
+<div id="dot-nav"></div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 1 — COVER
+══════════════════════════════════════════ -->
+<div class="slide" id="s1">
+  <div class="logo-mark">T · M · O · O · N</div>
+  <h1 class="cover-h">
+    Defense Procurement<br>
+    Has a <span class="cr">Blind Spot</span>.
+  </h1>
+  <p class="cover-tagline">We Close It.</p>
+  <span class="cover-meta">Midterm Pitch &nbsp;·&nbsp; 2026</span>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+══════════════════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="eyebrow">The Problem</div>
+  <h1 class="h1">Manual Screening<br>Cannot Scale.</h1>
+
+  <div class="big-stats">
+    <div class="bstat">
+      <div class="bstat-val cr">Days</div>
+      <div class="bstat-lbl">per vendor today</div>
+    </div>
+    <div class="vdivider"></div>
+    <div class="bstat">
+      <div class="bstat-val ca">1,000s</div>
+      <div class="bstat-lbl">of contracts to screen</div>
+    </div>
+  </div>
+
+  <div class="pill-row">
+    <div class="pill">
+      <div class="pill-val">€8B</div>
+      <div class="pill-lbl">MoD procurement budget</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val">2026</div>
+      <div class="pill-lbl">ABRO expands to all gov</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val">8–10 wks</div>
+      <div class="pill-lbl">deep intelligence check</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 2B — THE MINDBASE REALITY
+══════════════════════════════════════════ -->
+<div class="slide" id="s2b">
+  <div class="eyebrow">MINDbase · MoD</div>
+  <h1 class="h1">10 Minutes.<br>Or You Walk In <span class="cr">Blind</span>.</h1>
+
+  <div class="tl-wrap">
+    <div class="tl-bar">
+      <div class="tl-seg tl-meeting">
+        <span class="tl-lbl">Meeting</span>
+        <span class="tl-val">45 min</span>
+      </div>
+      <div class="tl-seg tl-coffee">
+        <span class="tl-lbl">Coffee</span>
+        <span class="tl-val">5 min</span>
+      </div>
+      <div class="tl-seg tl-prep">
+        <span class="tl-lbl">Your window</span>
+        <span class="tl-val">10 min</span>
+      </div>
+    </div>
+    <div class="tl-hint">↑ screen the company. right now. before you walk in.</div>
+  </div>
+
+  <div class="checks-row">
+    <div class="check-pill">Sanctions</div>
+    <div class="check-pill">Founder background</div>
+    <div class="check-pill">Major shareholders</div>
+    <div class="check-pill">Negative media</div>
+    <div class="check-pill">Security certifications</div>
+  </div>
+
+  <p class="sub">7 MINDbase locations · Multiple meetings daily · Currently: Google&nbsp;+&nbsp;ChatGPT, by hand.</p>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 3 — HOW THREATS HIDE
+══════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="eyebrow">The Hidden Risk</div>
+  <h1 class="h1">The Chain Goes <span class="cr">Deep</span>.</h1>
+
+  <div class="chain-wrap" id="chain">
+    <div class="cn cn-red"   id="cn0"><span class="cn-icon">🔴</span><span class="cn-text">Sanctioned Russian Oligarch</span><span class="cn-badge">Origin</span></div>
+    <div class="chain-arrow" id="ca0">↓ &nbsp;owns 100%</div>
+    <div class="cn cn-amber" id="cn1"><span class="cn-icon">🏝️</span><span class="cn-text">Holding Company</span><span class="cn-badge">British Virgin Islands</span></div>
+    <div class="chain-arrow" id="ca1">↓ &nbsp;owns 80%</div>
+    <div class="cn cn-amber" id="cn2"><span class="cn-icon">🇨🇾</span><span class="cn-text">Nominee Shareholders</span><span class="cn-badge">Cyprus</span></div>
+    <div class="chain-arrow" id="ca2">↓ &nbsp;owns 49%</div>
+    <div class="cn cn-amber" id="cn3"><span class="cn-icon">🇦🇪</span><span class="cn-text">Trading Company</span><span class="cn-badge">Dubai</span></div>
+    <div class="chain-arrow" id="ca3">↓ &nbsp;owns 30%</div>
+    <div class="cn cn-green" id="cn4"><span class="cn-icon">🇳🇱</span><span class="cn-text">"Clean" Dutch Supplier</span><span class="cn-badge" style="color:var(--green)">Wins Contract</span></div>
+    <div class="chain-arrow" id="ca4">↓</div>
+    <div class="cn cn-blue"  id="cn5"><span class="cn-icon">🏛️</span><span class="cn-text">Ministry of Defence</span><span class="cn-badge" style="color:var(--red)">Unaware</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 4 — THE SOLUTION
+══════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="s4-layout">
+
+    <!-- LEFT: counter + context -->
+    <div class="s4-left">
+      <div class="eyebrow">The Solution</div>
+      <div class="counter-wrap">
+        <div class="counter-num" id="counter-num">3.2</div>
+        <div class="counter-unit">s.</div>
+      </div>
+      <p class="s4-desc">
+        From company name<br>to full pre-meeting brief.<br><br>
+        No more Google.<br>No more ChatGPT.<br>No more guessing.
+      </p>
+      <div class="s4-sources">
+        <span>KvK</span>
+        <span>OpenSanctions</span>
+        <span>OpenCorporates</span>
+        <span>Web</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: interactive demo -->
+    <div class="demo-panel">
+      <div class="demo-header">
+        <div class="demo-brand">TMOON · SCREEN</div>
+        <div class="demo-input-row">
+          <div class="demo-input">Orion Trading BV</div>
+          <button class="demo-btn" id="demo-btn" onclick="runDemo()">▶ RUN SCAN</button>
+        </div>
+      </div>
+
+      <div class="demo-prog-wrap">
+        <div class="demo-prog-track">
+          <div class="demo-prog-fill" id="demo-prog"></div>
+        </div>
+        <div class="demo-timer" id="demo-timer">—</div>
+      </div>
+
+      <div class="demo-results" id="demo-results">
+        <div class="demo-row" style="opacity:.25; transform:none; color:var(--muted); justify-content:center; padding:28px 0; font-size:12px;">
+          Press RUN SCAN to generate brief
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 5 — WHY NOW
+══════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="eyebrow">Why Now</div>
+  <h1 class="h1">Three Forces Converging.</h1>
+
+  <div class="wnow-grid">
+    <div class="wnow-card c1">
+      <div class="wnow-icon">⚖️</div>
+      <div class="wnow-title">EU Law</div>
+      <div class="wnow-stat">€40M</div>
+      <div class="wnow-desc">Fines for sanctions violations.<br>Criminal offense since 2025.</div>
+    </div>
+    <div class="wnow-card c2">
+      <div class="wnow-icon">📋</div>
+      <div class="wnow-title">ABRO 2026</div>
+      <div class="wnow-stat">3×</div>
+      <div class="wnow-desc">Screening mandate expands to <em>all</em> Dutch government contracts overnight.</div>
+    </div>
+    <div class="wnow-card c3">
+      <div class="wnow-icon">📈</div>
+      <div class="wnow-title">Budget Growth</div>
+      <div class="wnow-stat">€8B</div>
+      <div class="wnow-desc">MoD procurement growing from €5.7B. More contracts, same broken process.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 6 — THE PATH
+══════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="eyebrow">Scale</div>
+  <h1 class="h1">Start Small. Scale Fast.</h1>
+
+  <div class="path-row">
+    <div class="pstep">
+      <div class="ptime">Now</div>
+      <div class="pnode">🎯</div>
+      <div class="ptitle">MoD Pilot</div>
+      <div class="psub">50 ammunition<br>suppliers · 12 weeks</div>
+    </div>
+    <div class="parrow">→</div>
+    <div class="pstep">
+      <div class="ptime">Month 3</div>
+      <div class="pnode">✓</div>
+      <div class="ptitle">Proven</div>
+      <div class="psub">Quantified results<br>Live production</div>
+    </div>
+    <div class="parrow">→</div>
+    <div class="pstep">
+      <div class="ptime">Year 1</div>
+      <div class="pnode">🇳🇱</div>
+      <div class="ptitle">All Dutch Gov</div>
+      <div class="psub">ABRO mandate<br>All ministries</div>
+    </div>
+    <div class="parrow">→</div>
+    <div class="pstep">
+      <div class="ptime">Year 2+</div>
+      <div class="pnode">🌍</div>
+      <div class="ptitle">NATO · EU</div>
+      <div class="psub">€9.5B procurement<br>26 ministries</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 7 — THE ASK
+══════════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="eyebrow">The Ask</div>
+  <h1 class="h1">Give Us <span class="cx">12 Weeks</span>.</h1>
+
+  <div class="ask-list">
+    <div class="ask-item">
+      <div class="ask-n">1</div>
+      <div class="ask-t">A pilot partner at Dutch MoD</div>
+    </div>
+    <div class="ask-item">
+      <div class="ask-n">2</div>
+      <div class="ask-t">Access to 50 real vendors</div>
+    </div>
+    <div class="ask-item">
+      <div class="ask-n">3</div>
+      <div class="ask-t">12 weeks to prove the concept</div>
+    </div>
+  </div>
+
+  <div class="ask-close">"We deliver working proof.&nbsp; Then we scale."</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════ -->
+<script>
+/* ─── PARTICLE CANVAS ──────────────────────────────────────── */
+const canvas = document.getElementById('bg-canvas');
+const ctx    = canvas.getContext('2d');
+
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+const P = Array.from({length: 90}, () => ({
+  x:  Math.random() * innerWidth,
+  y:  Math.random() * innerHeight,
+  vx: (Math.random() - .5) * .28,
+  vy: (Math.random() - .5) * .28,
+  r:  Math.random() * 1.4 + .4,
+  a:  Math.random() * .45 + .08,
+  c:  Math.random() > .88 ? '#ef4444' : '#00d4ff',
+}));
+
+function tick() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  P.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > canvas.width)  p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = p.c; ctx.globalAlpha = p.a; ctx.fill();
+  });
+  for (let i = 0; i < P.length; i++) {
+    for (let j = i+1; j < P.length; j++) {
+      const dx = P[i].x - P[j].x, dy = P[i].y - P[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 110) {
+        ctx.beginPath(); ctx.moveTo(P[i].x, P[i].y); ctx.lineTo(P[j].x, P[j].y);
+        ctx.strokeStyle = '#00d4ff'; ctx.globalAlpha = (1 - d/110) * .07;
+        ctx.lineWidth = .5; ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(tick);
+}
+tick();
+
+/* ─── SLIDES ────────────────────────────────────────────────── */
+const slides = [...document.querySelectorAll('.slide')];
+const total  = slides.length;
+let   cur    = 0;
+
+// Build dot nav
+const dotNav = document.getElementById('dot-nav');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.addEventListener('click', () => go(i));
+  dotNav.appendChild(d);
+});
+
+function go(n) {
+  slides[cur].classList.remove('active');
+  dotNav.children[cur].classList.remove('active');
+  cur = Math.max(0, Math.min(n, total - 1));
+  slides[cur].classList.add('active');
+  dotNav.children[cur].classList.add('active');
+  document.getElementById('progress').style.width = ((cur+1)/total*100) + '%';
+  onEnter(cur);
+}
+
+go(0);
+
+/* ─── KEYBOARD / TOUCH ──────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown',' '].includes(e.key)) { e.preventDefault(); go(cur+1); }
+  if (['ArrowLeft', 'ArrowUp'       ].includes(e.key)) { e.preventDefault(); go(cur-1); }
+  if (e.key === 'f' || e.key === 'F') document.documentElement.requestFullscreen?.();
+});
+let tx = 0;
+document.addEventListener('touchstart', e => tx = e.touches[0].clientX);
+document.addEventListener('touchend',   e => {
+  const d = tx - e.changedTouches[0].clientX;
+  if (Math.abs(d) > 50) go(d > 0 ? cur+1 : cur-1);
+});
+
+/* ─── SLIDE ENTER HOOKS ─────────────────────────────────────── */
+function onEnter(n) {
+  if (n === 2) animateChain();
+  if (n === 3) animateCounter();
+}
+
+/* Chain reveal */
+function animateChain() {
+  for (let i = 0; i < 6; i++) {
+    const node  = document.getElementById('cn' + i);
+    const arrow = document.getElementById('ca' + i);
+    node .classList.remove('show');
+    if (arrow) arrow.classList.remove('show');
+  }
+  for (let i = 0; i < 6; i++) {
+    const node  = document.getElementById('cn' + i);
+    const arrow = document.getElementById('ca' + i);
+    setTimeout(() => {
+      node.classList.add('show');
+      if (arrow) setTimeout(() => arrow.classList.add('show'), 200);
+    }, i * 420);
+  }
+}
+
+/* Counter bounce-in */
+function animateCounter() {
+  const el = document.getElementById('counter-num');
+  el.style.transition = 'none';
+  el.style.transform  = 'scale(.4)';
+  el.style.opacity    = '0';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.transition = 'transform .9s cubic-bezier(.34,1.56,.64,1), opacity .5s ease';
+      el.style.transform  = 'scale(1)';
+      el.style.opacity    = '1';
+    });
+  });
+}
+
+/* ─── DEMO ──────────────────────────────────────────────── */
+const DEMO_ROWS = [
+  { icon: '✓', lbl: 'Sanctions (OpenSanctions)',          val: 'CLEAR',                    cls: 'd-ok'   },
+  { icon: '⚠', lbl: 'Founder / CEO',                     val: 'D. Volkov — RU national',  cls: 'd-warn' },
+  { icon: '⚠', lbl: 'Major Shareholders',                 val: '1 offshore entity traced', cls: 'd-warn' },
+  { icon: '↓', lbl: 'Financial Performance',              val: '€4.2M rev · −12% YoY',    cls: 'd-warn' },
+  { icon: '✓', lbl: 'Core Business',                      val: 'Defense logistics',        cls: 'd-ok'   },
+  { icon: '✓', lbl: 'Existing Partnerships',              val: '2 found',                  cls: 'd-ok'   },
+  { icon: '✗', lbl: 'Security Certifications',            val: 'NONE on record',           cls: 'd-bad'  },
+  { icon: '⚠', lbl: 'Negative Media Coverage',           val: '2 articles flagged',       cls: 'd-warn' },
+];
+
+let demoRunning = false;
+
+function runDemo() {
+  if (demoRunning) return;
+  demoRunning = true;
+
+  const btn     = document.getElementById('demo-btn');
+  const prog    = document.getElementById('demo-prog');
+  const timer   = document.getElementById('demo-timer');
+  const results = document.getElementById('demo-results');
+
+  btn.disabled = true;
+  prog.style.width = '0';
+  timer.textContent = '0.0s';
+  results.innerHTML = '';
+
+  // Build hidden rows
+  DEMO_ROWS.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'demo-row';
+    row.innerHTML = `<i class="d-icon">${d.icon}</i><span class="d-lbl">${d.lbl}</span><span class="d-val ${d.cls}">${d.val}</span>`;
+    results.appendChild(row);
+  });
+
+  const totalMs = 3200;
+  const start   = Date.now();
+
+  // Progress + timer
+  const iv = setInterval(() => {
+    const el = Math.min(Date.now() - start, totalMs);
+    prog.style.width   = (el / totalMs * 100) + '%';
+    timer.textContent  = (el / 1000).toFixed(1) + 's';
+    if (el >= totalMs) { clearInterval(iv); timer.textContent = '3.2s'; }
+  }, 60);
+
+  // Reveal rows staggered over the 3.2s window
+  const rows = results.querySelectorAll('.demo-row');
+  rows.forEach((row, i) => {
+    setTimeout(() => row.classList.add('show'), 300 + i * (totalMs - 300) / rows.length);
+  });
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '↺ AGAIN';
+    demoRunning = false;
+  }, totalMs + 400);
+}
+</script>
+</body>
+</html>
